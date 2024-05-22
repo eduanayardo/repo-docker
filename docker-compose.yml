@@ -1,0 +1,69 @@
+version: "3.7"
+
+networks:
+  docker8.network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.16.11.0/24
+
+services:
+  php:
+    build: ./docker/php
+    restart: unless-stopped
+    container_name: docker8.php
+    tty: true
+    depends_on:
+      - mariadb
+    networks:
+      - docker8.network
+    volumes:
+      - .:/var/www
+
+  apache:
+    build: ./docker/apache
+    restart: unless-stopped
+    container_name: docker8.apache
+    tty: true
+    depends_on:
+      - php
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - docker8.network
+    volumes:
+      - .:/var/www
+
+  mariadb:
+    image: mariadb
+    restart: unless-stopped
+    container_name: docker8.mariadb
+    tty: true
+    ports:
+      - "3306:3306"
+    networks:
+      - docker8.network
+    volumes:
+      - "./docker/mysql/mariadb.cnf:/etc/mysql/conf.d/custom.cnf:ro"
+      - "./docker/mysql/dbdata:/var/lib/mysql"
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-development}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-mysql}
+      MYSQL_USER: ${MYSQL_USER:-mysql}
+
+  # phpmyadmin:
+  #   image: phpmyadmin
+  #   container_name: docker8.phpmyadmin
+  #   tty: true
+  #   depends_on:
+  #     - mysql
+  #   ports:
+  #     - "8080:80"
+  #   networks:
+  #      - docker8.network
+  #   environment:
+  #     PMA_HOST: mysql
+  #     PMA_ARBITRARY: 1
+  #     PMA_PORT: 3306
